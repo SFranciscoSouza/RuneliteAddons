@@ -24,6 +24,6 @@ public interface Hit13AlertConfig extends Config
 	)
 	default String overheadText()
 	{
-		return "Agora que vai entrar o grosso";
+		return "Calma companheiro";
 	}
 }
