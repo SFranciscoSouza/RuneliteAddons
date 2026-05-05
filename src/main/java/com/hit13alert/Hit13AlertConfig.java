@@ -18,12 +18,12 @@ public interface Hit13AlertConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "overheadText",
-		name = "Overhead Text",
-		description = "The text displayed above the target"
+		keyName = "chatEnabled",
+		name = "Show Chat Message",
+		description = "Also post the alert to your local chat box"
 	)
-	default String overheadText()
+	default boolean chatEnabled()
 	{
-		return "Calma companheiro";
+		return true;
 	}
 }

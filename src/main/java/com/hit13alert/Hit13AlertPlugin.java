@@ -6,7 +6,11 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
 import net.runelite.api.Hitsplat;
+import net.runelite.api.NPC;
+import net.runelite.api.Player;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -22,6 +26,10 @@ import net.runelite.client.plugins.PluginDescriptor;
 public class Hit13AlertPlugin extends Plugin
 {
 	private static final int TRIGGER_AMOUNT = 13;
+	private static final String OVERHEAD_PREFIX = "Calma Companheiro";
+
+	@Inject
+	private Client client;
 
 	@Inject
 	private Hit13AlertConfig config;
@@ -39,21 +47,71 @@ public class Hit13AlertPlugin extends Plugin
 			return;
 		}
 
-		// Only trigger on player-dealt hitsplats (isMine = local player, isOthers = other players)
-		if (!hitsplat.isMine() && !hitsplat.isOthers())
+		if (!config.textEnabled() && !config.chatEnabled())
 		{
 			return;
 		}
 
-		if (!config.textEnabled())
+		Actor target = event.getActor();
+		Player attacker = resolvePlayerAttacker(target, hitsplat);
+
+		if (attacker == null || attacker.getName() == null)
 		{
 			return;
 		}
 
-		Actor actor = event.getActor();
-		actor.setOverheadText(config.overheadText());
+		String msg = OVERHEAD_PREFIX + " " + attacker.getName();
 
-		executor.schedule(() -> actor.setOverheadText(""), 5, TimeUnit.SECONDS);
+		if (config.textEnabled())
+		{
+			target.setOverheadText(msg);
+			executor.schedule(() -> target.setOverheadText(""), 5, TimeUnit.SECONDS);
+		}
+
+		if (config.chatEnabled())
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", msg, null);
+		}
+	}
+
+	private Player resolvePlayerAttacker(Actor target, Hitsplat hitsplat)
+	{
+		if (target instanceof NPC)
+		{
+			if (hitsplat.isMine())
+			{
+				return client.getLocalPlayer();
+			}
+			if (hitsplat.isOthers())
+			{
+				return findPlayerInteractingWith(target);
+			}
+			return null;
+		}
+
+		if (target instanceof Player)
+		{
+			Actor interacting = target.getInteracting();
+			if (interacting instanceof Player)
+			{
+				return (Player) interacting;
+			}
+			return findPlayerInteractingWith(target);
+		}
+
+		return null;
+	}
+
+	private Player findPlayerInteractingWith(Actor target)
+	{
+		for (Player p : client.getPlayers())
+		{
+			if (p != null && p.getInteracting() == target)
+			{
+				return p;
+			}
+		}
+		return null;
 	}
 
 	@Provides
